@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Week Planner</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg%20width%3D'80'%20height%3D'80'%20xmlns%3D'http%3A//www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cmask%20id%3D'text-hole'%3E%3Crect%20width%3D'100%25'%20height%3D'100%25'%20fill%3D'white'/%3E%3Ctext%20x%3D'40'%20y%3D'39'%20font-family%3D'Arial'%20font-size%3D'80'%20font-weight%3D'bold'%20text-anchor%3D'middle'%20dominant-baseline%3D'central'%3E%E2%9C%93%3C/text%3E%3C/mask%3E%3C/defs%3E%3Ccircle%20cx%3D'40'%20cy%3D'40'%20r%3D'40'%20fill%3D'%232E7D32'%20mask%3D'url(%23text-hole)'/%3E%3C/svg%3E"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/fuzzysort@2.0.4/fuzzysort.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+      integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="calendar-container">
+      <div class="calendar-header">
+        <div class="month-name">
+          <span class="month">Month</span>
+          <span class="year">Year</span>
+        </div>
+        <div class="calendar-navigation">
+          <button id="search-btn" class="search-button" title="Search Tasks">
+            <i class="fas fa-search"></i>
+          </button>
+          <button id="settings-btn" class="settings-button" title="Settings">
+            <i class="fas fa-cog"></i>
+          </button>
+          <button id="prev-week" class="nav-button" title="Previous Week">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button id="next-week" class="nav-button" title="Next Week">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+        <!-- Settings Popup -->
+        <div id="settings-popup" class="settings-popup">
+          <div class="settings-popup-header">
+            <h3 data-translate="settings">Settings</h3>
+            <div class="settings-data-actions">
+              <!-- Export Button - Icon Only -->
+              <button
+                id="export-db-btn"
+                class="settings-button data-button"
+                title="Export Database"
+                data-translate-title="exportDatabaseTitle"
+              >
+                <i class="fas fa-download"></i>
+              </button>
+              <label
+                for="import-db-input"
+                class="import-db-label"
+                title="Import Database"
+                data-translate-title="importDatabaseTitle"
+              >
+                <i class="fas fa-upload"></i>
+              </label>
+              <input
+                type="file"
+                id="import-db-input"
+                class="import-db-input"
+                accept=".db"
+                style="display: none"
+              />
+            </div>
+          </div>
+          <div class="settings-columns-container">
+            <div class="settings-column">
+              <div class="settings-option">
+                <label for="theme-select">Theme</label>
+                <select id="theme-select" class="language-select">
+                  <option value="auto">Auto</option>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+              <div class="settings-option">
+                <label for="language-select-popup">Language</label>
+                <select id="language-select-popup" class="language-select">
+                  <option value="en">🇺🇸 English</option>
+                  <option value="ru">🇷🇺 Русский</option>
+                </select>
+              </div>
+            </div>
+            <div class="settings-column">
+              <div
+                class="settings-options-header"
+                data-translate="displayOptionsHeader"
+              >
+                Display
+              </div>
+              <div class="settings-option display-checkbox">
+                <label class="styled-checkbox">
+                  <input type="checkbox" id="full-weekdays-checkbox" />
+                  <span data-translate="fullWeekdaysHeader">
+                    Full weekday names
+                  </span>
+                </label>
+              </div>
+              <div class="settings-option display-checkbox">
+                <label class="styled-checkbox">
+                  <input type="checkbox" id="wrap-task-titles-checkbox" />
+                  <span data-translate="wrapWeekTitlesHeader">
+                    Wrap task titles
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Fuzzy Search Popup -->
+      <div id="fuzzy-search-popup" class="fuzzy-search-popup">
+        <div>
+          <input
+            autocomplete="off"
+            type="text"
+            id="fuzzy-search-input"
+            placeholder=""
+            data-translate="searchPlaceholder"
+          />
+          <ul id="fuzzy-search-results"></ul>
+        </div>
+      </div>
+      <!-- Calendar Grid -->
+      <div class="calendar">
+        <!-- Rows remain the same -->
+        <div class="calendar-row" id="row1">
+          <div id="inbox" class="inbox">
+            <div class="inbox-header">📦 Inbox</div>
+          </div>
+          <div id="monday" class="day">
+            <div class="day-header">
+              <span class="day-number">1</span>
+              <span class="day-weekday">Monday</span>
+            </div>
+          </div>
+          <div id="tuesday" class="day">
+            <div class="day-header">
+              <span class="day-number">2</span>
+              <span class="day-weekday">Tuesday</span>
+            </div>
+          </div>
+          <div id="wednesday" class="day">
+            <div class="day-header">
+              <span class="day-number">3</span>
+              <span class="day-weekday">Wednesday</span>
+            </div>
+          </div>
+        </div>
+        <div class="calendar-row" id="row2">
+          <div id="thursday" class="day">
+            <div class="day-header">
+              <span class="day-number">4</span>
+              <span class="day-weekday">Thursday</span>
+            </div>
+          </div>
+          <div id="friday" class="day">
+            <div class="day-header">
+              <span class="day-number">5</span>
+              <span class="day-weekday">Friday</span>
+            </div>
+          </div>
+          <div id="saturday" class="day">
+            <div class="day-header">
+              <span class="day-number">6</span>
+              <span class="day-weekday">Saturday</span>
+            </div>
+          </div>
+          <div id="sunday" class="day">
+            <div class="day-header">
+              <span class="day-number">7</span>
+              <span class="day-weekday">Sunday</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task Details Popup Overlay -->
+    <div id="task-details-popup-overlay" class="task-details-popup-overlay">
+      <div id="task-details-popup" class="task-details-popup">
+        <div class="task-popup-top-bar">
+          <!-- Left: Date & Color -->
+          <div class="task-actions-group task-actions-group-left">
+            <div class="task-details-header">
+              <div
+                class="task-details-date"
+                id="task-details-date"
+                tabindex="0"
+                title="Pick a date"
+                data-selected-date=""
+              >
+                Pick a date
+                <i class="fas fa-calendar-alt task-details-date-icon"></i>
+              </div>
+              <div class="color-swatches">
+                <button
+                  class="color-swatch blue-swatch"
+                  data-color="blue"
+                  title="Blue"
+                ></button>
+                <button
+                  class="color-swatch green-swatch"
+                  data-color="green"
+                  title="Green"
+                ></button>
+                <button
+                  class="color-swatch yellow-swatch"
+                  data-color="yellow"
+                  title="Yellow"
+                ></button>
+                <button
+                  class="color-swatch pink-swatch"
+                  data-color="pink"
+                  title="Pink"
+                ></button>
+                <button
+                  class="color-swatch orange-swatch"
+                  data-color="orange"
+                  title="Orange"
+                ></button>
+                <button
+                  class="color-swatch"
+                  data-color="no-color"
+                  title="Reset Color"
+                >
+                  <i class="fas fa-ban"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Center: Actions -->
+          <div class="task-actions-group task-actions-group-center">
+            <div class="task-actions-group task-actions-group-done-button">
+              <button
+                id="mark-done-task-details"
+                class="done-button"
+                title="Mark as done"
+                data-completed="0"
+              >
+                <i class="far fa-check-circle"></i>
+              </button>
+            </div>
+            <div class="task-actions-group task-actions-group-link-button">
+              <button
+                id="copy-task-link-btn"
+                class="link-button"
+                title="Copy Task Link"
+              >
+                <i class="fas fa-link"></i>
+              </button>
+            </div>
+            <button
+              id="recurring-task-details"
+              class="recurring-button"
+              title="Recurring task"
+            >
+              <i class="fas fa-sync-alt recurrence-icon"></i>
+            </button>
+            <button
+              id="view-recurring-chain-btn"
+              class="chain-button"
+              title="View Recurring Chain"
+              style="display: none"
+            >
+              <i class="fas fa-list-ol"></i>
+            </button>
+            <button
+              id="reminder-task-details"
+              class="reminder-button"
+              title="Set Reminder"
+              style="display: none"
+            >
+              <i class="fas fa-bell"></i>
+            </button>
+            <button
+              id="delete-task-details"
+              class="delete-button"
+              title="Delete Task"
+            >
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+          <!-- Right: Close -->
+          <div class="task-actions-group task-actions-group-right">
+            <button
+              id="close-task-details-popup"
+              class="close-popup-btn"
+              title="Close"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Title Input -->
+        <input
+          type="text"
+          id="task-details-title"
+          class="task-title-input"
+          placeholder="Task Title"
+          aria-label="Task Title"
+        />
+
+        <div class="task-details-popup-content">
+          <!-- Recurrence Settings Row -->
+          <div id="recurrence-settings-container" style="display: none">
+            <div class="recurrence-row">
+              <div
+                class="recurrence-control-group"
+                id="recurrence-controls"
+                style="display: none"
+              >
+                <!-- Initially hidden -->
+                <label data-translate="recurrenceEvery">Every</label>
+                <input
+                  type="number"
+                  id="recurrence-interval-input"
+                  value="1"
+                  min="1"
+                  class="recurrence-control themed-input"
+                  aria-label="Recurrence interval"
+                />
+                <select
+                  id="recurrence-period-select"
+                  class="recurrence-control themed-select"
+                  aria-label="Recurrence period"
+                >
+                  <option value="daily" data-translate="recurrenceDays">
+                    Days
+                  </option>
+                  <option value="weekly" data-translate="recurrenceWeeks">
+                    Weeks
+                  </option>
+                  <option value="monthly" data-translate="recurrenceMonths">
+                    Months
+                  </option>
+                  <option value="yearly" data-translate="recurrenceYears">
+                    Years
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div id="recurrence-preview" class="recurrence-preview-text"></div>
+          </div>
+
+          <!-- Description Area -->
+          <label for="task-description-textarea" data-translate="description">
+            Description:
+            <button
+              id="toggle-description-mode-btn"
+              class="description-mode-button"
+              title="Toggle Description Mode"
+            >
+              <i id="description-mode-icon" class="fas fa-book-open"></i>
+            </button>
+          </label>
+          <div
+            id="task-description-rendered"
+            class="task-description-rendered"
+            style="display: none"
+          ></div>
+          <textarea
+            id="task-description-textarea"
+            name="task-description"
+            style="display: block"
+            aria-labelledby="task-description-label"
+          ></textarea>
+        </div>
+
+        <!-- Date Picker -->
+        <div id="date-picker-container" class="date-picker-container">
+          <div class="date-picker-header">
+            <button
+              class="date-picker-nav-button"
+              id="date-picker-prev-month"
+              title="Previous Month"
+            >
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span
+              class="date-picker-month-year"
+              id="date-picker-month-year"
+            ></span>
+            <button
+              class="date-picker-nav-button"
+              id="date-picker-next-month"
+              title="Next Month"
+            >
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+          <div class="date-picker-grid" id="date-picker-grid"></div>
+          <div class="date-picker-actions">
+            <button
+              class="date-picker-reset-date"
+              id="date-picker-reset-date"
+              title="Remove Due Date"
+              data-translate="removeDate"
+            >
+              Remove Date
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recurring Chain Popup -->
+    <div id="recurring-chain-popup-overlay" class="task-details-popup-overlay">
+      <!-- Re-use overlay style -->
+      <div id="recurring-chain-popup" class="recurring-chain-popup">
+        <!-- Specific popup style -->
+        <div class="recurring-chain-popup-header">
+          <h3 data-translate="recurringChainTitle">Recurring Tasks</h3>
+          <!-- Add translation key -->
+          <button
+            id="close-recurring-chain-popup"
+            class="close-popup-btn"
+            title="Close"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="recurring-chain-popup-content">
+          <ul id="recurring-chain-list">
+            <!-- List items will be added here by ui.js -->
+          </ul>
+        </div>
+        <div class="recurring-chain-popup-pagination">
+          <button
+            id="recurring-chain-prev-page"
+            class="pagination-button"
+            title="Previous Page"
+            data-translate-title="previousWeek"
+          >
+            <
+          </button>
+          <span id="recurring-chain-page-info" data-translate="chainPageInfo"
+            >Page 1 of 1</span
+          >
+          <!-- Add translation key -->
+          <button
+            id="recurring-chain-next-page"
+            class="pagination-button"
+            disabled
+            data-translate-title="nextWeek"
+          >
+            >
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="snackbar" class="snackbar"></div>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
