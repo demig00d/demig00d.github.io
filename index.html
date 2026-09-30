@@ -26,10 +26,23 @@
           <span class="month">Month</span>
           <span class="year">Year</span>
         </div>
+
+        <!-- Central Search Bar -->
+        <div class="header-search-wrapper" id="header-search-wrapper">
+          <div class="header-search-icon"><i class="fas fa-search"></i></div>
+          <input
+            autocomplete="off"
+            type="text"
+            id="header-search-input"
+            class="header-search-input"
+            placeholder="Search Tasks"
+            data-translate="searchPlaceholder"
+          />
+          <ul id="search-results-dropdown" class="search-results-dropdown"></ul>
+        </div>
+
         <div class="calendar-navigation">
-          <button id="search-btn" class="search-button" title="Search Tasks">
-            <i class="fas fa-search"></i>
-          </button>
+          <!-- Search button removed -->
           <button id="settings-btn" class="settings-button" title="Settings">
             <i class="fas fa-cog"></i>
           </button>
@@ -116,19 +129,9 @@
           </div>
         </div>
       </div>
-      <!-- Fuzzy Search Popup -->
-      <div id="fuzzy-search-popup" class="fuzzy-search-popup">
-        <div>
-          <input
-            autocomplete="off"
-            type="text"
-            id="fuzzy-search-input"
-            placeholder=""
-            data-translate="searchPlaceholder"
-          />
-          <ul id="fuzzy-search-results"></ul>
-        </div>
-      </div>
+      
+      <!-- Fuzzy Search Popup REMOVED (moved to header) -->
+
       <!-- Calendar Grid -->
       <div class="calendar">
         <!-- Rows remain the same -->

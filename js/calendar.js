@@ -358,6 +358,13 @@ function makeInboxTitleEditable() {
   inputElement.classList.add("inbox-title-input");
   inputElement.style.textAlign = "left";
 
+  // Keep focus in the input when clicking inside the header frame
+  const handleHeaderMouseDown = (event) => {
+    if (event.target !== inputElement) event.preventDefault();
+  };
+  inboxHeaderElement.addEventListener("mousedown", handleHeaderMouseDown);
+
+  inboxHeaderElement.classList.add("editing");
   inboxHeaderElement.innerHTML = "";
   inboxHeaderElement.appendChild(inputElement);
   inputElement.focus();
@@ -369,6 +376,8 @@ function makeInboxTitleEditable() {
   const handleSave = async () => {
     /** @const {string} */
     const newTitle = inputElement.value.trim();
+    inboxHeaderElement.classList.remove("editing");
+    inboxHeaderElement.removeEventListener("mousedown", handleHeaderMouseDown);
     inboxHeaderElement.innerHTML = "";
     inboxHeaderElement.style.textAlign = "left";
 
@@ -391,6 +400,8 @@ function makeInboxTitleEditable() {
    * @returns {void}
    */
   const handleCancel = () => {
+    inboxHeaderElement.classList.remove("editing");
+    inboxHeaderElement.removeEventListener("mousedown", handleHeaderMouseDown);
     inboxHeaderElement.innerHTML = "";
     inboxHeaderElement.textContent = currentTitle;
     inboxHeaderElement.style.textAlign = "left";

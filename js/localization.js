@@ -30,7 +30,7 @@ export const translations = {
     // Placeholders & Basic UI
     newTask: "New task...",
     newTaskSomeday: "New task for inbox...",
-    searchPlaceholder: "Search tasks...",
+    searchPlaceholder: "Search tasks",
     noResults: "No matching tasks found.",
     close: "Close",
     baseTitleName: "Week planner",
@@ -148,7 +148,7 @@ export const translations = {
     // Placeholders & Basic UI
     newTask: "Новая задача...",
     newTaskSomeday: "Новая задача на когда-нибудь...",
-    searchPlaceholder: "Поиск задач...",
+    searchPlaceholder: "Поиск задач",
     noResults: "Задачи не найдены.",
     close: "Закрыть",
     baseTitleName: "Планировщик недели",
@@ -328,7 +328,6 @@ export async function updateTranslations(lang) {
 
   // Header/Nav
   updateElementTitle("#settings-btn", "settingsTitle");
-  updateElementTitle("#search-btn", "searchPlaceholder");
   updateElementTitle("#prev-week", "previousWeek");
   updateElementTitle("#next-week", "nextWeek");
 

@@ -15,10 +15,8 @@ const prevWeekButton = document.getElementById("prev-week");
 const nextWeekButton = document.getElementById("next-week");
 /** @const {HTMLElement | null} */
 const settingsBtn = document.getElementById("settings-btn");
-/** @const {HTMLElement | null} */
-const searchBtn = document.getElementById("search-btn");
 /** @const {HTMLInputElement | null} */
-const fuzzySearchInput = document.getElementById("fuzzy-search-input");
+const headerSearchInput = document.getElementById("header-search-input");
 
 // State variables
 /** @type {Date} */
@@ -143,9 +141,12 @@ function setupEventListeners() {
   }
   if (settingsBtn)
     settingsBtn.addEventListener("click", ui.toggleSettingsPopup);
-  if (searchBtn) searchBtn.addEventListener("click", ui.toggleSearchPopup);
-  if (fuzzySearchInput)
-    fuzzySearchInput.addEventListener("input", ui.handleSearchInput);
+    
+  if (headerSearchInput) {
+    headerSearchInput.addEventListener("input", ui.handleSearchInput);
+    headerSearchInput.addEventListener("focus", ui.handleSearchInput); // Re-open dropdown on focus
+  }
+    
   if (monthNameElement)
     monthNameElement.addEventListener("click", handleMonthNameClick);
 

@@ -44,10 +44,15 @@ const datePickerContainer = document.getElementById("date-picker-container");
 const datePickerMonthYear = document.getElementById("date-picker-month-year");
 /** @const {HTMLElement | null} */
 const datePickerGrid = document.getElementById("date-picker-grid");
+
+// Search References
 /** @const {HTMLElement | null} */
-const fuzzySearchPopup = document.getElementById("fuzzy-search-popup");
+const headerSearchWrapper = document.getElementById("header-search-wrapper");
+/** @const {HTMLInputElement | null} */
+const headerSearchInput = document.getElementById("header-search-input");
 /** @const {HTMLElement | null} */
-const fuzzySearchResultsList = document.getElementById("fuzzy-search-results");
+const searchResultsDropdown = document.getElementById("search-results-dropdown");
+
 /** @const {HTMLElement | null} */
 const taskDetailsDateInput = document.getElementById("task-details-date");
 /** @const {HTMLElement | null} */
@@ -124,14 +129,12 @@ export let currentTaskBeingViewed = null;
 let isDescriptionRenderedMode = false;
 /** @type {boolean} */
 let isSettingsOpen = false;
+
+// Search State
 /** @type {boolean} */
-let isSearchOpen = false;
+let isSearchDropdownOpen = false;
 /** @type {number | null} */
 let searchTimeout = null;
-/** @type {boolean} */
-let datePickerVisible = false;
-/** @type {Date} */
-let datePickerCurrentDate = new Date();
 /** @type {number} */
 let currentPage = 1;
 /** @const {number} */
@@ -142,6 +145,11 @@ let searchQuery = "";
 let loadingMoreResults = false;
 /** @type {function(Event): void | null} */
 let scrollEventListener = null;
+
+/** @type {boolean} */
+let datePickerVisible = false;
+/** @type {Date} */
+let datePickerCurrentDate = new Date();
 
 // State for Undo Operations
 /** 
@@ -465,26 +473,22 @@ export function closeAllPopups() {
     datePickerVisible = false;
     return;
   }
-  if (isSearchOpen) {
-    closeSearchPopup();
+  if (isSearchDropdownOpen) {
+    closeSearchDropdown();
     return;
   }
 }
 
 /**
- * Closes the fuzzy search popup.
+ * Closes the search dropdown.
  * @returns {void}
  */
-function closeSearchPopup() {
-  isSearchOpen = false;
-  if (fuzzySearchPopup) fuzzySearchPopup.style.display = "none";
-  if (fuzzySearchResultsList) fuzzySearchResultsList.innerHTML = "";
-  /** @const {HTMLInputElement | null} */
-  const searchInput = document.getElementById("fuzzy-search-input");
-  if (searchInput) searchInput.value = "";
+function closeSearchDropdown() {
+  isSearchDropdownOpen = false;
+  if (searchResultsDropdown) searchResultsDropdown.style.display = "none";
   removeScrollListener();
-  if (fuzzySearchResultsList)
-    fuzzySearchResultsList.classList.remove("scrollable");
+  if (searchResultsDropdown)
+    searchResultsDropdown.classList.remove("scrollable");
 }
 
 /**
@@ -505,15 +509,13 @@ export function handleGlobalClick(event) {
   )
     toggleSettingsPopup();
 
-  /** @const {HTMLElement | null} */
-  const fuzzySearchInnerDiv = fuzzySearchPopup?.querySelector("div");
+  // Close search dropdown if clicked outside header search wrapper
   if (
-    isSearchOpen &&
-    fuzzySearchInnerDiv &&
-    !fuzzySearchInnerDiv.contains(event.target) &&
-    !event.target.closest("#search-btn")
+    isSearchDropdownOpen &&
+    headerSearchWrapper &&
+    !headerSearchWrapper.contains(event.target)
   )
-    closeSearchPopup();
+    closeSearchDropdown();
 
   if (
     datePickerVisible &&
@@ -532,8 +534,6 @@ export function handleGlobalClick(event) {
     window.getSelection().toString().length === 0
   )
     closeTaskDetailsPopup();
-
-  if (event.target === fuzzySearchPopup) closeSearchPopup();
 }
 
 // --- Theme Management ---
@@ -1480,32 +1480,6 @@ function setupActionListeners() {
 setupActionListeners();
 
 // --- Search ---
-/**
- * Toggles the visibility of the search popup.
- * @returns {void}
- */
-export function toggleSearchPopup() {
-  isSearchOpen = !isSearchOpen;
-  if (fuzzySearchPopup)
-    fuzzySearchPopup.style.display = isSearchOpen ? "flex" : "none";
-  if (isSearchOpen) {
-    /** @const {HTMLInputElement | null} */
-    const searchInput = document.getElementById("fuzzy-search-input");
-    if (searchInput) searchInput.focus();
-    if (fuzzySearchResultsList) {
-      fuzzySearchResultsList.scrollTop = 0;
-      fuzzySearchResultsList.innerHTML = "";
-    }
-    currentPage = 1;
-    searchQuery = "";
-    /** @const {HTMLInputElement | null} */
-    const input = document.getElementById("fuzzy-search-input");
-    if (input) input.value = "";
-    removeScrollListener();
-    if (fuzzySearchResultsList)
-      fuzzySearchResultsList.classList.remove("scrollable");
-  } else closeSearchPopup();
-}
 
 /**
  * Handles input change in the search field (debounced).
@@ -1513,24 +1487,24 @@ export function toggleSearchPopup() {
  */
 export function handleSearchInput() {
   clearTimeout(searchTimeout);
-  /** @const {HTMLInputElement | null} */
-  const input = document.getElementById("fuzzy-search-input");
   /** @const {string} */
-  const query = input ? input.value.trim() : "";
+  const query = headerSearchInput ? headerSearchInput.value.trim() : "";
+  
   if (query !== searchQuery) {
     searchQuery = query;
     currentPage = 1;
-    if (fuzzySearchResultsList) {
-      fuzzySearchResultsList.scrollTop = 0;
-      fuzzySearchResultsList.innerHTML = "";
+    if (searchResultsDropdown) {
+        searchResultsDropdown.scrollTop = 0;
+        searchResultsDropdown.innerHTML = "";
     }
     removeScrollListener();
     searchTimeout = setTimeout(performSearch, 300);
-  } else if (query === "" && fuzzySearchResultsList?.innerHTML !== "") {
-    if (fuzzySearchResultsList) fuzzySearchResultsList.innerHTML = "";
-    removeScrollListener();
-    if (fuzzySearchResultsList)
-      fuzzySearchResultsList.classList.remove("scrollable");
+  } else if (query === "" && isSearchDropdownOpen) {
+      // If cleared, hide results
+      closeSearchDropdown();
+  } else if (query !== "" && !isSearchDropdownOpen) {
+      // If focused back on with text, reopen
+      performSearch();
   }
 }
 
@@ -1539,14 +1513,20 @@ export function handleSearchInput() {
  * @returns {Promise<void>}
  */
 async function performSearch() {
-  if (fuzzySearchResultsList) {
-    fuzzySearchResultsList.innerHTML = "";
-    fuzzySearchResultsList.classList.remove("scrollable");
+  if (searchResultsDropdown) {
+    searchResultsDropdown.innerHTML = "";
+    searchResultsDropdown.classList.remove("scrollable");
   }
+  
   if (searchQuery.length === 0) {
-    removeScrollListener();
+    closeSearchDropdown();
     return;
   }
+  
+  // Show dropdown immediately
+  isSearchDropdownOpen = true;
+  if(searchResultsDropdown) searchResultsDropdown.style.display = "block";
+
   loadingMoreResults = false;
   await displayFuzzySearchResults(searchQuery, currentPage, tasksPerPage);
 }
@@ -1559,7 +1539,7 @@ async function performSearch() {
  * @returns {Promise<void>}
  */
 async function displayFuzzySearchResults(query, page, pageSize) {
-  if (!fuzzySearchResultsList || (loadingMoreResults && page > 1)) return;
+  if (!searchResultsDropdown || (loadingMoreResults && page > 1)) return;
   loadingMoreResults = true;
   try {
     /** @const {db.Task[]} */
@@ -1576,7 +1556,7 @@ async function displayFuzzySearchResults(query, page, pageSize) {
       li.textContent =
         translations[lang]?.noResults || "No matching tasks found.";
       li.style.cursor = "default";
-      fuzzySearchResultsList.appendChild(li);
+      searchResultsDropdown.appendChild(li);
       removeScrollListener();
     } else if (tasks.length > 0) {
       /** @const {string} */
@@ -1608,7 +1588,7 @@ async function displayFuzzySearchResults(query, page, pageSize) {
           titleEl.classList.add(`${task.color}-title-highlight`);
 
         listItem.addEventListener("click", async () => {
-          closeSearchPopup();
+          closeSearchDropdown();
           try {
             /** @const {db.Task | undefined} */
             const freshTask = await db.fetchTaskDetails(task.id);
@@ -1635,16 +1615,16 @@ async function displayFuzzySearchResults(query, page, pageSize) {
             showSnackbar("errorLoadingTaskDetails", true);
           }
         });
-        fuzzySearchResultsList.appendChild(listItem);
+        searchResultsDropdown.appendChild(listItem);
       });
       if (tasks.length < pageSize) removeScrollListener();
       else setupScrollListener();
       requestAnimationFrame(() => {
-        if (fuzzySearchResultsList)
-          fuzzySearchResultsList.classList.toggle(
+        if (searchResultsDropdown)
+            searchResultsDropdown.classList.toggle(
             "scrollable",
-            fuzzySearchResultsList.scrollHeight >
-              fuzzySearchResultsList.clientHeight,
+            searchResultsDropdown.scrollHeight >
+                searchResultsDropdown.clientHeight,
           );
       });
     } else removeScrollListener();
@@ -1659,21 +1639,21 @@ async function displayFuzzySearchResults(query, page, pageSize) {
  * @returns {void}
  */
 function setupScrollListener() {
-  if (!scrollEventListener && fuzzySearchResultsList) {
+  if (!scrollEventListener && searchResultsDropdown) {
     scrollEventListener = async () => {
       if (
-        isSearchOpen &&
+        isSearchDropdownOpen &&
         !loadingMoreResults &&
-        fuzzySearchResultsList &&
-        fuzzySearchResultsList.scrollTop +
-          fuzzySearchResultsList.clientHeight >=
-          fuzzySearchResultsList.scrollHeight - 50
+        searchResultsDropdown &&
+        searchResultsDropdown.scrollTop +
+        searchResultsDropdown.clientHeight >=
+        searchResultsDropdown.scrollHeight - 50
       ) {
         currentPage++;
         await displayFuzzySearchResults(searchQuery, currentPage, tasksPerPage);
       }
     };
-    fuzzySearchResultsList.addEventListener("scroll", scrollEventListener);
+    searchResultsDropdown.addEventListener("scroll", scrollEventListener);
   }
 }
 
@@ -1682,8 +1662,8 @@ function setupScrollListener() {
  * @returns {void}
  */
 function removeScrollListener() {
-  if (scrollEventListener && fuzzySearchResultsList) {
-    fuzzySearchResultsList.removeEventListener("scroll", scrollEventListener);
+  if (scrollEventListener && searchResultsDropdown) {
+    searchResultsDropdown.removeEventListener("scroll", scrollEventListener);
     scrollEventListener = null;
   }
 }

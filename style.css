@@ -101,7 +101,6 @@ body.dark-theme {
 /* Base Popup Container Styling */
 .task-details-popup,
 .settings-popup,
-.fuzzy-search-popup > div,
 .recurring-chain-popup,
 .date-picker-container {
   border: 1px solid var(--task-border-color) !important;
@@ -117,7 +116,6 @@ body.dark-theme {
 /* General Themed Inputs (Selects, Textareas, etc.) */
 .task-details-popup textarea,
 .task-details-popup-content .task-description-rendered,
-.fuzzy-search-popup input,
 .settings-option select,
 .themed-select,
 .themed-input,
@@ -163,7 +161,6 @@ body.dark-theme {
 }
 
 /* Focus States for Themed Controls */
-.fuzzy-search-popup input:focus,
 .settings-option select:focus,
 .themed-select:focus,
 .themed-input:focus,
@@ -192,22 +189,29 @@ body.dark-theme {
   height: 100vh;
 }
 .calendar-header {
-  display: flex;
-  justify-content: space-between;
+  /* 1fr auto 1fr keeps the search bar geometrically centered,
+     regardless of the widths of the month name and nav buttons */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 500px) minmax(0, 1fr);
   align-items: center;
-  margin: 20px;
+  margin: 15px 20px;
   flex-shrink: 0;
+  gap: 20px;
+}
+.month-name {
+  justify-self: start;
 }
 .calendar-navigation {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  justify-self: end;
 }
 
 /* Header Buttons & Controls */
 .nav-button,
 .settings-button,
-.description-mode-button,
-.search-button {
+.description-mode-button {
   background: none;
   border: none;
   color: var(--text-color);
@@ -218,19 +222,16 @@ body.dark-theme {
   justify-content: center;
   font-size: 1em;
 }
-.nav-button,
-.search-button {
+.nav-button {
   font-size: 1.2em;
   margin: 0 5px;
 }
 .settings-button,
-.description-mode-button,
-.search-button {
+.description-mode-button {
   margin-left: 10px;
 }
 .settings-button i,
-.description-mode-button i,
-.search-button i {
+.description-mode-button i {
   pointer-events: none;
 }
 .language-select {
@@ -251,6 +252,108 @@ body.dark-theme {
 .language-select option {
   background-color: var(--bg-color);
   color: var(--text-color);
+}
+
+/* --- Header Search Bar (Центральный поиск) --- */
+.header-search-wrapper {
+    width: 100%; /* capped by the 500px middle grid column */
+    position: relative;
+}
+
+.header-search-input {
+    width: 100%;
+    padding: 8px 10px 8px 35px; /* space for icon */
+    box-sizing: border-box;
+    background-color: transparent;
+    border: 1px solid var(--task-border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    font-size: 1em;
+}
+.header-search-input:focus {
+    border-color: var(--input-focus-border);
+    outline: none;
+}
+.header-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--dim-text-color);
+    pointer-events: none;
+}
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: var(--bg-color);
+    border: 1px solid var(--task-border-color);
+    border-top: none;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: none; /* Hidden by default */
+}
+.search-results-dropdown li {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--task-border-color);
+    cursor: pointer;
+}
+.search-results-dropdown li:last-child {
+    border-bottom: none;
+}
+.search-results-dropdown li:hover {
+    background-color: var(--inbox-bg-light);
+}
+body.dark-theme .search-results-dropdown li:hover {
+    background-color: var(--inbox-bg-dark);
+}
+
+/* Стили для элементов внутри поиска (аналогично fuzzy search) */
+.fuzzy-search-task-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  font-size: 1em;
+}
+
+.fuzzy-search-task-date {
+  font-size: 0.85em;
+  color: var(--dim-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  margin-top: 2px;
+}
+
+/* Подсветка заголовков в поиске */
+.fuzzy-search-task-title.blue-title-highlight { color: var(--fuzzy-highlight-blue-light); }
+body.dark-theme .fuzzy-search-task-title.blue-title-highlight { color: var(--fuzzy-highlight-blue-dark); }
+.fuzzy-search-task-title.green-title-highlight { color: var(--fuzzy-highlight-green-light); }
+body.dark-theme .fuzzy-search-task-title.green-title-highlight { color: var(--fuzzy-highlight-green-dark); }
+.fuzzy-search-task-title.yellow-title-highlight { color: var(--fuzzy-highlight-yellow-light); }
+body.dark-theme .fuzzy-search-task-title.yellow-title-highlight { color: var(--fuzzy-highlight-yellow-dark); }
+.fuzzy-search-task-title.pink-title-highlight { color: var(--fuzzy-highlight-pink-light); }
+body.dark-theme .fuzzy-search-task-title.pink-title-highlight { color: var(--fuzzy-highlight-pink-dark); }
+.fuzzy-search-task-title.orange-title-highlight { color: var(--fuzzy-highlight-orange-light); }
+body.dark-theme .fuzzy-search-task-title.orange-title-highlight { color: var(--fuzzy-highlight-orange-dark); }
+
+.search-results-dropdown li.completed-task .fuzzy-search-task-title::before {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  content: "\f00c";
+  display: inline-block;
+  margin-right: 5px;
+  color: var(--highlight-text-color);
+  font-size: 0.8em;
 }
 
 /* Calendar Grid */
@@ -302,6 +405,9 @@ body.dark-theme .inbox {
 }
 .inbox-header {
   text-align: left;
+  /* Fixed ratio so the title text and the editing input share the same
+     line box height — the header must not resize when editing starts */
+  line-height: 1.6;
 }
 .day-header {
   text-align: center;
@@ -310,12 +416,13 @@ body.dark-theme .inbox {
   color: var(--highlight-text-color);
 }
 .month-name {
-  font-size: 1em;
+  font-size: 1.1em;
   font-weight: bold;
   display: flex;
   align-items: baseline;
   gap: 5px;
   color: var(--dim-text-color);
+  flex-shrink: 0;
 }
 .year {
   font-size: 1em;
@@ -339,26 +446,26 @@ body.dark-theme .inbox {
 .day-header.today-highlight .day-weekday {
   color: var(--dim-highlight-text-color);
 }
+.inbox-header.editing {
+  /* Real border (renders reliably in every browser); padding gives up 1px
+     on each side for it, so the header geometry stays pixel-identical */
+  border: 1px solid var(--input-focus-border);
+  padding: 7px;
+}
 .inbox-title-input {
-  width: auto;
-  max-width: 100%;
-  padding: 8px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
   box-sizing: border-box;
   background-color: transparent;
   color: var(--text-color);
+  font: inherit;
   font-weight: bold;
   border-radius: 0;
-  border: 1px solid transparent;
-  font-size: 1em;
+  border: none;
   text-align: left;
   outline: none !important;
   box-shadow: none !important;
-}
-.inbox-title-input:hover {
-  border-color: var(--day-border) !important;
-}
-.inbox-title-input:focus {
-  border-color: var(--input-focus-border) !important;
 }
 
 /* --- Task Item --- */
@@ -916,118 +1023,6 @@ body.dark-theme .color-swatch.orange-swatch {
   border-width: 2px;
 }
 
-/* --- Fuzzy Search Popup --- */
-
-.fuzzy-search-popup {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 10;
-  display: none;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 100px;
-  box-sizing: border-box;
-}
-.fuzzy-search-popup > div {
-  width: 300px;
-  padding: 10px;
-  position: relative;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  border-radius: 0;
-}
-.fuzzy-search-popup input {
-  width: calc(100% - 20px);
-  padding: 8px 10px;
-  margin: 0 auto 10px;
-  display: block;
-  box-sizing: border-box;
-  border-radius: 0;
-}
-.fuzzy-search-popup ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  overflow-y: auto;
-  max-height: 420px;
-}
-.fuzzy-search-popup li {
-  padding: 8px;
-  border-bottom: 1px solid var(--task-border-color);
-  cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fuzzy-search-popup li:last-child {
-  border-bottom: none;
-}
-.fuzzy-search-popup li:hover {
-  background-color: var(--inbox-bg-light);
-}
-body.dark-theme .fuzzy-search-popup li:hover {
-  background-color: var(--inbox-bg-dark);
-}
-.fuzzy-search-task-title {
-  font-weight: normal;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
-}
-.fuzzy-search-task-date {
-  font-size: 0.9em;
-  color: var(--dim-text-color);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
-}
-
-/* Fuzzy Search Title Color Highlights */
-.fuzzy-search-task-title.blue-title-highlight {
-  color: var(--fuzzy-highlight-blue-light);
-}
-body.dark-theme .fuzzy-search-task-title.blue-title-highlight {
-  color: var(--fuzzy-highlight-blue-dark);
-}
-.fuzzy-search-task-title.green-title-highlight {
-  color: var(--fuzzy-highlight-green-light);
-}
-body.dark-theme .fuzzy-search-task-title.green-title-highlight {
-  color: var(--fuzzy-highlight-green-dark);
-}
-.fuzzy-search-task-title.yellow-title-highlight {
-  color: var(--fuzzy-highlight-yellow-light);
-}
-body.dark-theme .fuzzy-search-task-title.yellow-title-highlight {
-  color: var(--fuzzy-highlight-yellow-dark);
-}
-.fuzzy-search-task-title.pink-title-highlight {
-  color: var(--fuzzy-highlight-pink-light);
-}
-body.dark-theme .fuzzy-search-task-title.pink-title-highlight {
-  color: var(--fuzzy-highlight-pink-dark);
-}
-.fuzzy-search-task-title.orange-title-highlight {
-  color: var(--fuzzy-highlight-orange-light);
-}
-body.dark-theme .fuzzy-search-task-title.orange-title-highlight {
-  color: var(--fuzzy-highlight-orange-dark);
-}
-.fuzzy-search-popup li.completed-task .fuzzy-search-task-title::before {
-  font-family: "Font Awesome 6 Free";
-  font-weight: 900;
-  content: "\f00c";
-  display: inline-block;
-  margin-right: 5px;
-  color: var(--highlight-text-color);
-  font-size: 0.8em;
-}
-
 /* --- Custom Date Picker --- */
 
 .date-picker-container {
@@ -1505,10 +1500,21 @@ body.dark-theme
     margin: 0;
   }
   .calendar-header {
-    margin: 10px;
+    display: flex; /* back to flex: search wraps onto its own row */
     flex-wrap: wrap;
+    justify-content: space-between;
+    margin: 10px;
     gap: 5px;
   }
+  
+  /* Break header row on small screens */
+  .header-search-wrapper {
+      order: 3;
+      width: 100%;
+      margin: 10px 0 0 0;
+      max-width: none;
+  }
+  
   .calendar {
     flex-direction: column;
     overflow-y: visible;
