@@ -59,6 +59,9 @@ export const translations = {
     previousWeek: "Previous Week",
     nextWeek: "Next Week",
 
+    // Mobile View Toggle
+    weekView: "Week",
+
     // Task Actions & Details
     taskDate: "Task Date",
     deleteTask: "Delete Task",
@@ -176,6 +179,9 @@ export const translations = {
     // Calendar Navigation
     previousWeek: "Предыдущая неделя",
     nextWeek: "Следующая неделя",
+
+    // Mobile View Toggle
+    weekView: "Неделя",
 
     // Task Actions & Details
     taskDate: "Дата задачи",

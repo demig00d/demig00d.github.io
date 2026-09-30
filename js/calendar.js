@@ -2,6 +2,7 @@ import * as db from "./database.js";
 import * as tasks from "./tasks.js";
 import * as ui from "./ui.js";
 import * as utils from "./utils.js";
+import { applyMobileDaySelection } from "./mobile.js";
 import { translations } from "./localization.js";
 import { dayIds } from "./config.js";
 
@@ -254,6 +255,7 @@ export async function renderWeekCalendar(date) {
       lang,
     );
   }
+  applyMobileDaySelection();
   ui.updateTabTitle();
 }
 
@@ -267,11 +269,13 @@ export async function renderInbox() {
   /** @const {string} */
   const inboxTitle = await db.fetchInboxTitle();
   inboxDiv.innerHTML = "";
-  inboxDiv.style.backgroundColor = document.body.classList.contains(
-    "dark-theme",
-  )
-    ? "var(--inbox-bg-dark)"
-    : "var(--inbox-bg-light)";
+
+  // Keep the mobile toggle label in sync with the inbox title
+  /** @const {HTMLElement | null} */
+  const inboxToggleLabel = document.getElementById("inbox-toggle-label");
+  if (inboxToggleLabel) {
+    inboxToggleLabel.textContent = inboxTitle;
+  }
 
   /** @const {HTMLElement} */
   const headerDiv = document.createElement("div");
@@ -380,6 +384,7 @@ export async function renderInbox() {
   inboxForm.addEventListener("submit", handleInboxTaskEvent);
   inboxInputElement.addEventListener("keydown", handleInboxTaskEvent);
   inboxInputElement.addEventListener("blur", handleInboxTaskEvent);
+  applyMobileDaySelection();
 }
 
 /**

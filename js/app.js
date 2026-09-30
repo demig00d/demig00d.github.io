@@ -1,5 +1,6 @@
 import * as db from "./database.js";
 import * as calendar from "./calendar.js";
+import * as mobile from "./mobile.js";
 import * as tasks from "./tasks.js";
 import * as ui from "./ui.js";
 import * as utils from "./utils.js";
@@ -8,6 +9,10 @@ import { dayIds, TASK_COLORS, initialWrapTaskTitles } from "./config.js";
 import {
   getDisplayedWeekStartDate,
   setDisplayedWeekStartDate,
+  getMobileSelectedDate,
+  setMobileSelectedDate,
+  setMobileView,
+  isMobileLayout,
 } from "./state.js";
 
 // DOM element references
@@ -58,6 +63,53 @@ async function checkAndRefreshTasks() {
     await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
     await ui.refreshTodayTasks(); // This now uses ui.setTodayTasks
     ui.updateTabTitle(); // Update title/favicon
+  }
+}
+
+/**
+ * Picks the mobile day selection for a week-navigation step: today when the
+ * target week is the current week, otherwise the same weekday ±7 days.
+ * @param {Date} newWeekStart - The week being navigated to.
+ * @param {number} delta - The navigation direction (-7 or +7 days).
+ * @returns {string} The selected date as "YYYY-MM-DD".
+ */
+function getMobileTargetDate(newWeekStart, delta) {
+  if (utils.isDateCurrentWeek(newWeekStart)) {
+    return new Date().toLocaleDateString("en-CA");
+  }
+  return utils
+    .addDays(utils.parseDateUTC(getMobileSelectedDate()), delta)
+    .toLocaleDateString("en-CA");
+}
+
+/**
+ * Moves the mobile day view to the previous (-1) or next (+1) day. Crossing
+ * the week boundary re-renders the week; within a week only the selection
+ * classes change (no database access).
+ * @param {number} delta
+ * @returns {Promise<void>}
+ */
+async function navigateMobileDay(delta) {
+  if (mobileNavLock) return;
+  /** @const {Date} */
+  const nextDate = utils.addDays(
+    utils.parseDateUTC(getMobileSelectedDate()),
+    delta,
+  );
+  setMobileSelectedDate(nextDate.toLocaleDateString("en-CA"));
+  /** @const {Date} */
+  const newWeekStart = utils.getStartOfWeek(nextDate);
+  if (newWeekStart.toDateString() !== getDisplayedWeekStartDate().toDateString()) {
+    // Guard against overlapping renders on fast consecutive swipes
+    mobileNavLock = true;
+    try {
+      setDisplayedWeekStartDate(newWeekStart);
+      await calendar.renderWeekCalendar(newWeekStart);
+    } finally {
+      mobileNavLock = false;
+    }
+  } else {
+    mobile.applyMobileDaySelection();
   }
 }
 
@@ -115,21 +167,30 @@ async function initialize() {
  * @returns {void}
  */
 function setupEventListeners() {
+  mobile.setupMobileLayout();
+  mobile.setDayNavigationHandler(navigateMobileDay);
+
   if (prevWeekButton) {
     prevWeekButton.addEventListener("click", async () => {
-      setDisplayedWeekStartDate(
-        utils.addDays(getDisplayedWeekStartDate(), -7),
-      );
-      await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
+      /** @const {Date} */
+      const newWeekStart = utils.addDays(getDisplayedWeekStartDate(), -7);
+      if (isMobileLayout()) {
+        setMobileSelectedDate(getMobileTargetDate(newWeekStart, -7));
+      }
+      setDisplayedWeekStartDate(newWeekStart);
+      await calendar.renderWeekCalendar(newWeekStart);
       await checkAndRefreshTasks();
     });
   }
   if (nextWeekButton) {
     nextWeekButton.addEventListener("click", async () => {
-      setDisplayedWeekStartDate(
-        utils.addDays(getDisplayedWeekStartDate(), 7),
-      );
-      await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
+      /** @const {Date} */
+      const newWeekStart = utils.addDays(getDisplayedWeekStartDate(), 7);
+      if (isMobileLayout()) {
+        setMobileSelectedDate(getMobileTargetDate(newWeekStart, 7));
+      }
+      setDisplayedWeekStartDate(newWeekStart);
+      await calendar.renderWeekCalendar(newWeekStart);
       await checkAndRefreshTasks();
     });
   }
@@ -268,9 +329,13 @@ async function handleInitialTaskLink() {
           );
           /** @const {Date} */
           const startOfWeek = utils.getStartOfWeek(taskDateObj);
+          // On mobile, select the day containing the linked task
+          mobile.setMobileFocus(taskDetails.due_date);
           setDisplayedWeekStartDate(startOfWeek);
           await calendar.renderWeekCalendar(startOfWeek);
         } else {
+          // On mobile, open the inbox view for the linked task
+          mobile.setMobileFocus(null);
           await calendar.renderInbox();
           document
             .getElementById("inbox")
@@ -314,6 +379,8 @@ function handleHashChange() {
  * @returns {Promise<void>}
  */
 async function handleMonthNameClick() {
+  setMobileSelectedDate(new Date().toLocaleDateString("en-CA"));
+  setMobileView("week");
   setDisplayedWeekStartDate(utils.getStartOfWeek(new Date()));
   await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
 }

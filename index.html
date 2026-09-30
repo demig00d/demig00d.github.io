@@ -129,7 +129,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- Fuzzy Search Popup REMOVED (moved to header) -->
 
       <!-- Calendar Grid -->
@@ -186,6 +186,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Mobile bottom bar (visible only <=768px): day strip + view toggle -->
+    <nav id="mobile-view-toggle" class="mobile-view-toggle" aria-label="Views">
+      <!-- Day strip is shown only in the week view -->
+      <div id="mobile-day-strip" class="mobile-day-strip" role="group" aria-label="Days"></div>
+      <div class="view-toggle-row">
+        <button type="button" id="toggle-week-btn" class="view-toggle-btn" aria-pressed="true">
+          <span data-translate="weekView">Неделя</span>
+        </button>
+        <button type="button" id="toggle-inbox-btn" class="view-toggle-btn" aria-pressed="false">
+          <span id="inbox-toggle-label">Inbox</span><span id="inbox-badge" class="inbox-badge empty">0</span>
+        </button>
+      </div>
+    </nav>
 
     <!-- Task Details Popup Overlay -->
     <div id="task-details-popup-overlay" class="task-details-popup-overlay">

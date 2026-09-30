@@ -6,6 +6,8 @@ const URLS_TO_CACHE = [
   '/js/app.js',
   '/js/calendar.js',
   '/js/database.js',
+  '/js/mobile.js',
+  '/js/state.js',
   '/js/tasks.js',
   '/js/ui.js',
   '/js/utils.js',

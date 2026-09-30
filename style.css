@@ -1486,6 +1486,13 @@ body.dark-theme
   background-color: rgba(255, 255, 255, 0.5);
 }
 
+/* --- Mobile Day View (elements hidden on desktop) --- */
+
+.mobile-day-strip,
+.mobile-view-toggle {
+  display: none;
+}
+
 /* --- Responsive Adjustments --- */
 
 @media (max-width: 768px) {
@@ -1529,15 +1536,8 @@ body.dark-theme
     width: 100%;
     overflow-y: visible;
     max-height: none;
-    border-left: none;
-    border-right: none;
+    border: none;
     border-radius: 0;
-  }
-  .calendar-row:last-child .day:last-child {
-    border-bottom: 1px solid var(--day-border);
-  }
-  .inbox {
-    border-top: none;
   }
 
   /* Adjust popup sizes for smaller screens */
@@ -1572,5 +1572,129 @@ body.dark-theme
   }
   .recurrence-row {
     gap: 10px;
+  }
+
+  /* --- Mobile Day View: one day at a time + day strip + bottom toggle --- */
+
+  /* Room for the fixed bottom bar (strip + toggle in week view) */
+  .calendar-container {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom));
+  }
+  /* In the inbox view the strip is hidden, so the bar is one row tall */
+  body.mobile-inbox-view .calendar-container {
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
+  }
+
+  /* Day strip: lives inside the fixed bottom bar, week view only */
+  .mobile-day-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  body.mobile-inbox-view .mobile-day-strip {
+    display: none;
+  }
+  .day-strip-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 2px;
+    background: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--day-border);
+    border-radius: 6px;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .day-strip-chip .chip-weekday {
+    font-size: 0.72em;
+    color: var(--dim-text-color);
+  }
+  .day-strip-chip .chip-date {
+    font-weight: bold;
+  }
+  .day-strip-chip.today .chip-date {
+    color: var(--highlight-text-color);
+  }
+  .day-strip-chip.selected {
+    border-color: var(--highlight-text-color);
+    font-weight: bold;
+  }
+
+  /* Show only the selected day column; inbox only in inbox view */
+  .day {
+    display: none;
+  }
+  .day.mobile-selected {
+    display: flex;
+    min-height: 55vh;
+    min-height: 55dvh;
+  }
+  body.mobile-inbox-view .day.mobile-selected {
+    display: none;
+  }
+  body:not(.mobile-inbox-view) .inbox {
+    display: none;
+  }
+  /* The inbox is a full-page view on mobile — merge with the page
+     background instead of the desktop panel tint */
+  body.mobile-inbox-view .inbox {
+    background-color: var(--bg-color);
+  }
+
+  /* Bottom bar: day strip + view toggle */
+  .mobile-view-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--bg-color);
+    border-top: 1px solid var(--day-border);
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+  }
+  .view-toggle-row {
+    display: flex;
+    gap: 8px;
+  }
+  .view-toggle-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    background: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--day-border);
+    border-radius: 6px;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .view-toggle-btn[aria-pressed="true"] {
+    border-color: var(--highlight-text-color);
+    color: var(--highlight-text-color);
+    font-weight: bold;
+  }
+  .inbox-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--highlight-text-color);
+    color: var(--bg-color);
+    font-size: 0.75em;
+  }
+  .inbox-badge.empty {
+    display: none;
   }
 }

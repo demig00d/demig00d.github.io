@@ -8,6 +8,7 @@ import {
 } from "./localization.js";
 import { initialWrapTaskTitles } from "./config.js";
 import { setDisplayedWeekStartDate, getDisplayedWeekStartDate } from "./state.js";
+import { setMobileFocus } from "./mobile.js";
 
 // --- DOM Element References ---
 /** @const {HTMLElement | null} */
@@ -546,15 +547,11 @@ export function setTheme(theme) {
   /** @const {HTMLBodyElement} */
   const body = document.body;
   body.classList.remove("dark-theme", "light-theme");
-  /** @type {string} */
-  let resolvedTheme = theme;
 
   if (theme === "dark") {
     body.classList.add("dark-theme");
-    resolvedTheme = "dark";
   } else if (theme === "light") {
     body.classList.add("light-theme");
-    resolvedTheme = "light";
   } else {
     /** @const {boolean} */
     const prefersDark = window.matchMedia?.(
@@ -562,10 +559,8 @@ export function setTheme(theme) {
     ).matches;
     if (prefersDark) {
       body.classList.add("dark-theme");
-      resolvedTheme = "dark";
     } else {
       body.classList.add("light-theme");
-      resolvedTheme = "light";
     }
   }
 
@@ -574,14 +569,6 @@ export function setTheme(theme) {
     const color = event.dataset.taskColor;
     event.style.backgroundColor = getTaskBackgroundColor(color);
   });
-  /** @const {HTMLElement | null} */
-  const inboxDiv = document.getElementById("inbox");
-  if (inboxDiv) {
-    inboxDiv.style.backgroundColor =
-      resolvedTheme === "dark"
-        ? "var(--inbox-bg-dark)"
-        : "var(--inbox-bg-light)";
-  }
   requestAnimationFrame(updateSelectArrowsColor);
   updateTabTitle();
   /** @const {HTMLSelectElement | null} */
@@ -1200,7 +1187,8 @@ function setupActionListeners() {
         
         if (taskElement) taskElement.style.display = "none";
         
-        // Update todayTasks state immediately for favicon
+        // Update todayTasks state immediately for favicon — render from local
+        // state: the DB still holds the task until the undo window closes
         /** @const {number} */
         const taskIndex = todayTasks.findIndex((t) => t.id === taskIdToDelete);
         if (taskIndex > -1)
@@ -1208,7 +1196,7 @@ function setupActionListeners() {
             ...todayTasks.slice(0, taskIndex),
             ...todayTasks.slice(taskIndex + 1),
           ]);
-        updateTabTitle();
+        renderTabMeta();
         if (currentTaskBeingViewed === taskIdToDelete) closeTaskDetailsPopup();
 
         showUndoSnackbar(
@@ -1601,10 +1589,14 @@ async function displayFuzzySearchResults(query, page, pageSize) {
               const startOfWeek = utils.getStartOfWeek(
                 utils.parseDateUTC(freshTask.due_date),
               );
+              // On mobile, select the day containing the task
+              setMobileFocus(freshTask.due_date);
               setDisplayedWeekStartDate(startOfWeek);
               await calendar.renderWeekCalendar(startOfWeek);
               highlightTask(task.id);
             } else {
+              // On mobile, open the inbox view for the task
+              setMobileFocus(null);
               await calendar.renderInbox();
               document
                 .getElementById("inbox")
@@ -1889,6 +1881,8 @@ async function updateTaskDueDate(newDate) {
     updateTabTitle();
 
     // Refresh calendar view
+    // On mobile, follow the task: select its day (or the inbox view)
+    setMobileFocus(newDate);
     /** @type {Date} */
     let weekToRender = newDate
       ? utils.getStartOfWeek(utils.parseDateUTC(newDate))
@@ -1980,10 +1974,45 @@ export async function refreshTodayTasks() {
  */
 export async function updateTabTitle() {
   await refreshTodayTasks();
+  renderTabMeta();
+}
+
+/**
+ * Paints tab title, favicon and inbox badge from the current local state,
+ * without re-fetching. Used after optimistic updates (e.g. delete with undo)
+ * where the DB still holds the task until the undo window closes.
+ * @returns {void}
+ */
+function renderTabMeta() {
   /** @const {string} */
   const lang = localStorage.getItem("language") || "ru";
   document.title = translations[lang]?.baseTitleName || "Week Planner";
   updateFavicon(todayTasks.filter((task) => task.completed === 0).length);
+  updateInboxBadge();
+}
+
+/**
+ * Updates the mobile inbox toggle badge with the number of open inbox tasks.
+ * Counted from the database: the DOM may be stale after in-place updates
+ * like swipe-to-complete.
+ * @returns {void}
+ */
+function updateInboxBadge() {
+  db.fetchInboxTasks()
+    .then((inboxTasks) => {
+      /** @const {number} */
+      const openCount = inboxTasks.filter((task) => task.completed === 0)
+        .length;
+      /** @const {HTMLElement | null} */
+      const badge = document.getElementById("inbox-badge");
+      if (badge) {
+        badge.textContent = String(openCount);
+        badge.classList.toggle("empty", openCount === 0);
+      }
+    })
+    .catch(() => {
+      /* the badge is cosmetic — never block the title update */
+    });
 }
 
 /**
@@ -2419,10 +2448,14 @@ function renderRecurringChainList(chainTasks) {
             const startOfWeek = utils.getStartOfWeek(
               utils.parseDateUTC(freshTask.due_date),
             );
+            // On mobile, select the day containing the task
+            setMobileFocus(freshTask.due_date);
             setDisplayedWeekStartDate(startOfWeek);
             await calendar.renderWeekCalendar(startOfWeek);
             highlightTask(task.id);
           } else {
+            // On mobile, open the inbox view for the task
+            setMobileFocus(null);
             await calendar.renderInbox();
             document
               .getElementById("inbox")
