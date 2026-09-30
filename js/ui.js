@@ -7,7 +7,7 @@ import {
   updateTranslations,
 } from "./localization.js";
 import { initialWrapTaskTitles } from "./config.js";
-import { setDisplayedWeekStartDate, getDisplayedWeekStartDate } from "./app.js";
+import { setDisplayedWeekStartDate, getDisplayedWeekStartDate } from "./state.js";
 
 // --- DOM Element References ---
 /** @const {HTMLElement | null} */

@@ -1,7 +1,7 @@
 import * as db from "./database.js";
 import * as ui from "./ui.js";
 import * as calendar from "./calendar.js";
-import { getDisplayedWeekStartDate } from "./app.js";
+import { getDisplayedWeekStartDate } from "./state.js";
 import { loadLanguage } from "./localization.js";
 
 /** @type {HTMLElement | null} */

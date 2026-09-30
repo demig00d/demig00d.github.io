@@ -31,6 +31,142 @@ async function handleDayDrop(event, todayTasks, updateTodayTasks) {
 }
 
 /**
+ * Builds the content of a single day column: header, task list and inline
+ * new-task form.
+ * @param {HTMLElement} dayDiv - The static day column element.
+ * @param {Date} date - The date of this day column.
+ * @param {Task[]} dailyTasks - Tasks due on this day, sorted by order.
+ * @param {boolean} isCurrentWeek - Whether the displayed week is the current week.
+ * @param {Date} today - Today's date (for the today highlight).
+ * @param {string} lang - Current language code.
+ * @returns {Promise<void>}
+ */
+async function buildDayColumn(
+  dayDiv,
+  date,
+  dailyTasks,
+  isCurrentWeek,
+  today,
+  lang,
+) {
+  /** @const {string} */
+  const dayDateString = date.toLocaleDateString("en-CA");
+  dayDiv.dataset.date = dayDateString;
+
+  // Attach drag/click listeners only once: the day div is a static node that
+  // survives re-renders (innerHTML="" clears only its children), so listeners
+  // added unconditionally would accumulate. The click handler resolves the
+  // new-task form at event time because the form is recreated on each render.
+  if (!dayDiv.dataset.listenersAttached) {
+    dayDiv.dataset.listenersAttached = "true";
+    dayDiv.addEventListener("dragover", tasks.allowDrop);
+    // Pass todayTasks and the update function to the handler
+    dayDiv.addEventListener("drop", (event) =>
+      handleDayDrop(event, ui.todayTasks, async (newTasks) => {
+        await ui.refreshTodayTasks(); // Use the existing function
+        ui.updateTabTitle();
+      }),
+    );
+    dayDiv.addEventListener("dragleave", tasks.handleDragLeave);
+    dayDiv.addEventListener("click", (event) => {
+      if (
+        event.target === dayDiv ||
+        (!event.target.closest(".event") &&
+          !event.target.closest(".day-header"))
+      ) {
+        dayDiv.querySelector(".new-task-form input")?.focus();
+      }
+    });
+  }
+
+  /** @const {boolean} */
+  const displayFullWeekdays = localStorage.getItem("fullWeekdays") === "true";
+
+  /** @const {HTMLElement} */
+  const dayHeaderDiv = document.createElement("div");
+  dayHeaderDiv.classList.add("day-header");
+  if (isCurrentWeek && date.toDateString() === today.toDateString()) {
+    dayHeaderDiv.classList.add("today-highlight");
+  }
+  /** @const {string} */
+  const weekdayName = displayFullWeekdays
+    ? translations[lang].dayNamesFull[(date.getDay() + 6) % 7]
+    : translations[lang].dayNamesShort[(date.getDay() + 6) % 7];
+  dayHeaderDiv.innerHTML = `<span class="day-number">${date.getDate()}</span><span class="day-weekday">${weekdayName}</span>`;
+  dayDiv.appendChild(dayHeaderDiv);
+
+  /** @const {HTMLElement} */
+  const taskContainer = document.createElement("div");
+  taskContainer.classList.add("task-container");
+  taskContainer.style.visibility = "hidden";
+  dayDiv.appendChild(taskContainer);
+
+  await tasks.renderTasks(dailyTasks, taskContainer);
+  taskContainer.style.visibility = "visible";
+
+  /** @const {HTMLFormElement} */
+  const newTaskForm = document.createElement("form");
+  newTaskForm.classList.add("new-task-form");
+  newTaskForm.innerHTML = `<input type="text" placeholder="${translations[lang].newTask}">`;
+  dayDiv.appendChild(newTaskForm);
+
+  /** @const {HTMLInputElement} */
+  const newTaskInput = newTaskForm.querySelector('input[type="text"]');
+
+  /**
+   * Handles creation of a new task for the day.
+   * @param {Event} event
+   * @returns {Promise<void>}
+   */
+  const addTaskHandler = async (event) => {
+    if (
+      event.type === "submit" ||
+      (event.type === "keydown" && event.key === "Enter") ||
+      event.type === "blur"
+    ) {
+      event.preventDefault();
+      if (newTaskInput.value.trim()) {
+        /** @type {Omit<Task, 'id'>} */
+        const taskData = {
+          title: newTaskInput.value.trim(),
+          due_date: dayDateString,
+          order: taskContainer.children.length,
+          color: "",
+          description: "",
+          completed: 0,
+          recurrence_rule: "",
+          recurrence_interval: 1,
+          previous_task_id: null,
+          next_task_id: null,
+        };
+        try {
+          /** @type {Task} */
+          const newTask = await db.createTask(taskData);
+          // Correct todayTasks update
+          if (newTask.due_date === new Date().toLocaleDateString("en-CA")) {
+            ui.todayTasks.push(newTask);
+          }
+          /** @const {HTMLElement | null} */
+          const newEvent = await tasks.createTaskElement(newTask);
+          if (newEvent) {
+            tasks.attachTaskEventListeners(newEvent, newTask.id);
+            taskContainer.appendChild(newEvent);
+          }
+          newTaskInput.value = "";
+          ui.updateTabTitle();
+        } catch (error) {
+          console.error("Error adding task:", error);
+        }
+      }
+    }
+  };
+
+  newTaskForm.addEventListener("submit", addTaskHandler);
+  newTaskInput.addEventListener("keydown", addTaskHandler);
+  newTaskInput.addEventListener("blur", addTaskHandler);
+}
+
+/**
  * Renders the weekly calendar view centered around the given date.
  * @param {Date | string} date - The date to center the week on.
  * @returns {Promise<void>}
@@ -96,49 +232,12 @@ export async function renderWeekCalendar(date) {
 
   /** @const {Date} */
   const today = new Date();
-  /** @type {boolean} */
-  let displayFullWeekdays = localStorage.getItem("fullWeekdays") === "true";
 
   for (let index = 0; index < dates.length; index++) {
     /** @const {Date} */
     const date = dates[index];
     /** @const {string} */
-    const dayId = dayIds[index];
-    /** @const {HTMLElement} */
-    const dayDiv = dayElements[dayId];
-    /** @const {string} */
-    const dayDateString = dates[index].toLocaleDateString("en-CA");
-
-    dayDiv.dataset.date = dayDateString;
-    dayDiv.addEventListener("dragover", tasks.allowDrop);
-    // Pass todayTasks and the update function to the handler
-    dayDiv.addEventListener("drop", (event) =>
-      handleDayDrop(event, ui.todayTasks, async (newTasks) => {
-        await ui.refreshTodayTasks(); // Use the existing function
-        ui.updateTabTitle();
-      }),
-    );
-    dayDiv.addEventListener("dragleave", tasks.handleDragLeave);
-
-    /** @const {HTMLElement} */
-    const dayHeaderDiv = document.createElement("div");
-    dayHeaderDiv.classList.add("day-header");
-    if (isThisCurrentWeek && date.toDateString() === today.toDateString()) {
-      dayHeaderDiv.classList.add("today-highlight");
-    }
-    /** @const {string} */
-    const weekdayName = displayFullWeekdays
-      ? translations[lang].dayNamesFull[(date.getDay() + 6) % 7]
-      : translations[lang].dayNamesShort[(date.getDay() + 6) % 7];
-    dayHeaderDiv.innerHTML = `<span class="day-number">${date.getDate()}</span><span class="day-weekday">${weekdayName}</span>`;
-    dayDiv.appendChild(dayHeaderDiv);
-
-    /** @const {HTMLElement} */
-    const taskContainer = document.createElement("div");
-    taskContainer.classList.add("task-container");
-    taskContainer.style.visibility = "hidden";
-    dayDiv.appendChild(taskContainer);
-
+    const dayDateString = date.toLocaleDateString("en-CA");
     /** @const {Task[]} */
     const dailyTasks = weekTasks.filter((task) => {
       if (!task.due_date) return false;
@@ -146,78 +245,14 @@ export async function renderWeekCalendar(date) {
     });
 
     dailyTasks.sort((a, b) => a.order - b.order);
-    await tasks.renderTasks(dailyTasks, taskContainer);
-    taskContainer.style.visibility = "visible";
-
-    /** @const {HTMLFormElement} */
-    const newTaskForm = document.createElement("form");
-    newTaskForm.classList.add("new-task-form");
-    newTaskForm.innerHTML = `<input type="text" placeholder="${translations[lang].newTask}">`;
-    dayDiv.appendChild(newTaskForm);
-
-    /** @const {HTMLInputElement} */
-    const newTaskInput = newTaskForm.querySelector('input[type="text"]');
-
-    /**
-     * Handles creation of a new task for the day.
-     * @param {Event} event 
-     * @returns {Promise<void>}
-     */
-    const addTaskHandler = async (event) => {
-      if (
-        event.type === "submit" ||
-        (event.type === "keydown" && event.key === "Enter") ||
-        event.type === "blur"
-      ) {
-        event.preventDefault();
-        if (newTaskInput.value.trim()) {
-          /** @type {Omit<Task, 'id'>} */
-          const taskData = {
-            title: newTaskInput.value.trim(),
-            due_date: dayDateString,
-            order: taskContainer.children.length,
-            color: "",
-            description: "",
-            completed: 0,
-            recurrence_rule: "",
-            recurrence_interval: 1,
-            previous_task_id: null,
-            next_task_id: null,
-          };
-          try {
-            /** @type {Task} */
-            const newTask = await db.createTask(taskData);
-            // Correct todayTasks update
-            if (newTask.due_date === new Date().toLocaleDateString("en-CA")) {
-              ui.todayTasks.push(newTask);
-            }
-            /** @const {HTMLElement | null} */
-            const newEvent = await tasks.createTaskElement(newTask);
-            if (newEvent) {
-              tasks.attachTaskEventListeners(newEvent, newTask.id);
-              taskContainer.appendChild(newEvent);
-            }
-            newTaskInput.value = "";
-            ui.updateTabTitle();
-          } catch (error) {
-            console.error("Error adding task:", error);
-          }
-        }
-      }
-    };
-
-    newTaskForm.addEventListener("submit", addTaskHandler);
-    newTaskInput.addEventListener("keydown", addTaskHandler);
-    newTaskInput.addEventListener("blur", addTaskHandler);
-    dayDiv.addEventListener("click", (event) => {
-      if (
-        event.target === dayDiv ||
-        (!event.target.closest(".event") &&
-          !event.target.closest(".day-header"))
-      ) {
-        newTaskForm.querySelector("input").focus();
-      }
-    });
+    await buildDayColumn(
+      dayElements[dayIds[index]],
+      date,
+      dailyTasks,
+      isThisCurrentWeek,
+      today,
+      lang,
+    );
   }
   ui.updateTabTitle();
 }
@@ -253,15 +288,31 @@ export async function renderInbox() {
     }
   });
 
-  inboxDiv.addEventListener("dragover", tasks.allowDrop);
-  // Pass todayTasks and the update function to the handler
-  inboxDiv.addEventListener("drop", (event) =>
-    handleDayDrop(event, ui.todayTasks, async (newTasks) => {
-      await ui.refreshTodayTasks();
-      ui.updateTabTitle();
-    }),
-  );
-  inboxDiv.addEventListener("dragleave", tasks.handleDragLeave);
+  // Attach drag/click listeners only once: #inbox is a static node that
+  // survives re-renders (innerHTML="" clears only its children). The click
+  // handler resolves the new-task form at event time because the form is
+  // recreated on each render.
+  if (!inboxDiv.dataset.listenersAttached) {
+    inboxDiv.dataset.listenersAttached = "true";
+    inboxDiv.addEventListener("dragover", tasks.allowDrop);
+    // Pass todayTasks and the update function to the handler
+    inboxDiv.addEventListener("drop", (event) =>
+      handleDayDrop(event, ui.todayTasks, async (newTasks) => {
+        await ui.refreshTodayTasks();
+        ui.updateTabTitle();
+      }),
+    );
+    inboxDiv.addEventListener("dragleave", tasks.handleDragLeave);
+    inboxDiv.addEventListener("click", (event) => {
+      if (
+        event.target === inboxDiv ||
+        (!event.target.closest(".event") &&
+          !event.target.closest(".inbox-header"))
+      ) {
+        inboxDiv.querySelector(".new-task-form input")?.focus();
+      }
+    });
+  }
 
   /** @const {Task[]} */
   const inboxTasks = await db.fetchInboxTasks();
@@ -329,16 +380,6 @@ export async function renderInbox() {
   inboxForm.addEventListener("submit", handleInboxTaskEvent);
   inboxInputElement.addEventListener("keydown", handleInboxTaskEvent);
   inboxInputElement.addEventListener("blur", handleInboxTaskEvent);
-
-  inboxDiv.addEventListener("click", (event) => {
-    if (
-      event.target === inboxDiv ||
-      (!event.target.closest(".event") &&
-        !event.target.closest(".inbox-header"))
-    ) {
-      inboxInputElement.focus();
-    }
-  });
 }
 
 /**

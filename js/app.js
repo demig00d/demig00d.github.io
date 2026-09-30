@@ -5,6 +5,10 @@ import * as ui from "./ui.js";
 import * as utils from "./utils.js";
 import { loadLanguage, translations } from "./localization.js";
 import { dayIds, TASK_COLORS, initialWrapTaskTitles } from "./config.js";
+import {
+  getDisplayedWeekStartDate,
+  setDisplayedWeekStartDate,
+} from "./state.js";
 
 // DOM element references
 /** @const {HTMLElement | null} */
@@ -19,8 +23,6 @@ const settingsBtn = document.getElementById("settings-btn");
 const headerSearchInput = document.getElementById("header-search-input");
 
 // State variables
-/** @type {Date} */
-let _displayedWeekStartDate = utils.getStartOfWeek(new Date());
 /** @type {string} */
 let currentTheme = localStorage.getItem("theme") || "auto";
 /** @type {boolean} */
@@ -31,20 +33,12 @@ let wrapTaskTitles = localStorage.getItem("wrapTaskTitles") !== "false";
 let lastKnownDate = new Date().toLocaleDateString("en-CA");
 /** @type {boolean} */
 let initialTaskLinkHandled = false;
+/** @type {boolean} */
+let mobileNavLock = false;
 
 if (localStorage.getItem("wrapTaskTitles") === null) {
   wrapTaskTitles = initialWrapTaskTitles;
 }
-
-// Getter/Setter for displayedWeekStartDate
-/** @returns {Date} */
-export const getDisplayedWeekStartDate = () => _displayedWeekStartDate;
-/** @param {Date} newDate */
-export const setDisplayedWeekStartDate = (newDate) => {
-  _displayedWeekStartDate = newDate;
-};
-/** @returns {Date} */
-const getDisplayedWeekStartDateInternal = () => _displayedWeekStartDate;
 
 /**
  * Checks for date change and runs recurring task catch-up if necessary.
@@ -61,7 +55,7 @@ async function checkAndRefreshTasks() {
     }
     // Refresh the week view as the check might have created new tasks for today
     setDisplayedWeekStartDate(utils.getStartOfWeek(new Date()));
-    await calendar.renderWeekCalendar(getDisplayedWeekStartDateInternal());
+    await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
     await ui.refreshTodayTasks(); // This now uses ui.setTodayTasks
     ui.updateTabTitle(); // Update title/favicon
   }
@@ -77,7 +71,7 @@ async function initialize() {
   ui.updateSettingsLanguageSelector(localStorage.getItem("language") || "ru");
   ui.setTheme(currentTheme);
   requestAnimationFrame(ui.updateSelectArrowsColor);
-  await calendar.renderWeekCalendar(getDisplayedWeekStartDateInternal());
+  await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
   await calendar.renderInbox();
   ui.updateSettingsText(); // Apply translations
   setupEventListeners();
@@ -124,18 +118,18 @@ function setupEventListeners() {
   if (prevWeekButton) {
     prevWeekButton.addEventListener("click", async () => {
       setDisplayedWeekStartDate(
-        utils.addDays(getDisplayedWeekStartDateInternal(), -7),
+        utils.addDays(getDisplayedWeekStartDate(), -7),
       );
-      await calendar.renderWeekCalendar(getDisplayedWeekStartDateInternal());
+      await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
       await checkAndRefreshTasks();
     });
   }
   if (nextWeekButton) {
     nextWeekButton.addEventListener("click", async () => {
       setDisplayedWeekStartDate(
-        utils.addDays(getDisplayedWeekStartDateInternal(), 7),
+        utils.addDays(getDisplayedWeekStartDate(), 7),
       );
-      await calendar.renderWeekCalendar(getDisplayedWeekStartDateInternal());
+      await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
       await checkAndRefreshTasks();
     });
   }
@@ -321,7 +315,7 @@ function handleHashChange() {
  */
 async function handleMonthNameClick() {
   setDisplayedWeekStartDate(utils.getStartOfWeek(new Date()));
-  await calendar.renderWeekCalendar(getDisplayedWeekStartDateInternal());
+  await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
 }
 
 /**
@@ -357,7 +351,7 @@ async function handleFullWeekdaysChange(event) {
   ui.handleCheckboxChange(target);
   displayFullWeekdays = target.checked;
   localStorage.setItem("fullWeekdays", String(displayFullWeekdays));
-  await calendar.renderWeekCalendar(getDisplayedWeekStartDateInternal());
+  await calendar.renderWeekCalendar(getDisplayedWeekStartDate());
   ui.updateSettingsText();
 }
 
